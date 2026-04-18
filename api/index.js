@@ -3,7 +3,7 @@ const axios = require('axios');
 module.exports = async (req, res) => {
     // 1. CORS Headers
     res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
     if (req.method === 'OPTIONS') return res.status(200).end();
@@ -13,65 +13,79 @@ module.exports = async (req, res) => {
 
     try {
         // ==========================================
-        // ROUTE 1: TIKTOK (TikWM se)
+        // 1. TIKTOK (TikWM API - 100% Working)
         // ==========================================
-        if (url.includes('tiktok.com')) {
-            const response = await axios.get(`https://www.tikwm.com/api/?url=${encodeURIComponent(url)}`);
-            if (response.data && response.data.data && response.data.data.play) {
+        if (url.includes('tiktok.com') || url.includes('vt.tiktok')) {
+            const { data } = await axios.get(`https://www.tikwm.com/api/?url=${url}`);
+            if (data?.data?.play) {
                 return res.status(200).json({
-                    title: response.data.data.title || "TikTok HD Video",
-                    thumbnail: response.data.data.cover,
-                    download_url: response.data.data.play
+                    title: data.data.title || "TikTok Video Ready",
+                    thumbnail: data.data.cover,
+                    download_url: data.data.play
                 });
             }
-        } 
-        
-        // ==========================================
-        // ROUTE 2: YOUTUBE & PINTEREST (Auto-Switcher)
-        // ==========================================
-        // Vercel block hone par hum in 4 backup servers ka use karenge
-        const cobaltServers = [
-            'https://cobalt.qiaosi.dev/',
-            'https://api.cobalt.ac/',
-            'https://cobalt.tux.pizza/',
-            'https://api.cobalt.tools/' // Main server aakhri option
-        ];
+            throw new Error('TikTok link ghalat hai ya video private hai.');
+        }
 
-        let finalDownloadData = null;
+        // ==========================================
+        // 2. PINTEREST (Direct Scraper - Kabhi block nahi hoga)
+        // ==========================================
+        if (url.includes('pinterest.com') || url.includes('pin.it')) {
+            // Pinterest ka page download karega
+            const { data } = await axios.get(url, { 
+                headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' } 
+            });
+            
+            // HTML code mein se direct .mp4 video ka link dhoondega
+            const videoMatch = data.match(/"contentUrl":"([^"]+\.mp4)"/) || data.match(/<meta property="og:video" content="([^"]+)"/);
+            
+            if (videoMatch && videoMatch[1]) {
+                return res.status(200).json({
+                    title: "Pinterest HD Video",
+                    thumbnail: "https://via.placeholder.com/300x400?text=Pinterest+Video",
+                    download_url: videoMatch[1].replace(/\\/g, '') // Link saaf karna
+                });
+            }
+            throw new Error('Pinterest par video nahi mili. Shayad yeh sirf ek tasveer (image) hai.');
+        }
 
-        // Loop chalayen: Ek fail hoga to agla try karega
-        for (let server_url of cobaltServers) {
+        // ==========================================
+        // 3. YOUTUBE (Dual Dedicated APIs)
+        // ==========================================
+        if (url.includes('youtube.com') || url.includes('youtu.be')) {
+            
+            // API 1: Siputzx Engine
             try {
-                const response = await axios.post(server_url, { url: url }, {
-                    headers: {
-                        'Accept': 'application/json',
-                        'Content-Type': 'application/json'
-                    },
-                    timeout: 7000 // Har server ko 7 second dega
-                });
-                
-                if (response.data && response.data.url) {
-                    finalDownloadData = {
-                        title: "YouTube/Pinterest HD Video",
-                        thumbnail: "https://via.placeholder.com/300x200?text=Video+Ready",
-                        download_url: response.data.url
-                    };
-                    break; // Jaise hi link mil jaye, loop band kar do!
+                const res1 = await axios.get(`https://api.siputzx.my.id/api/d/ytmp4?url=${encodeURIComponent(url)}`);
+                if (res1.data?.data?.dl) {
+                    return res.status(200).json({
+                        title: res1.data.data.title || "YouTube HD",
+                        thumbnail: "https://via.placeholder.com/300x200?text=YouTube",
+                        download_url: res1.data.data.dl
+                    });
                 }
-            } catch (err) {
-                console.log(`Server failed: ${server_url}`);
-                continue; // Agar yeh block hai, to chhod kar agle par jao
-            }
+            } catch(e) { console.log("YT API 1 busy"); }
+
+            // API 2: BK9 Engine (Agar pehla busy ho)
+            try {
+                const res2 = await axios.get(`https://bk9.fun/download/youtube?url=${encodeURIComponent(url)}`);
+                if (res2.data?.BK9?.url) {
+                    return res.status(200).json({
+                        title: res2.data.BK9.title || "YouTube HD",
+                        thumbnail: "https://via.placeholder.com/300x200?text=YouTube",
+                        download_url: res2.data.BK9.url
+                    });
+                }
+            } catch(e) { console.log("YT API 2 busy"); }
+
+            throw new Error('Dono YouTube servers busy hain. Link check karein ya kuch dair baad try karein.');
         }
 
-        // Agar kisi ek server se bhi link mil gaya
-        if (finalDownloadData) {
-            return res.status(200).json(finalDownloadData);
-        } else {
-            return res.status(500).json({ error: 'Sabhi servers temporarily busy hain. Kuch dair baad try karein.' });
-        }
+        // Agar koi aur link daal diya jaye
+        return res.status(400).json({ error: "Yeh platform supported nahi hai. Sirf YT, TikTok aur Pinterest chalega." });
 
     } catch (error) {
-        return res.status(500).json({ error: 'System Error', details: error.message });
+        console.error("SYSTEM ERROR:", error.message);
+        return res.status(500).json({ error: error.message });
     }
 };
