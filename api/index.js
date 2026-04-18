@@ -1,4 +1,5 @@
 const axios = require('axios');
+const ytdl = require('ytdl-core'); // Ytdl-core library add kar di
 
 module.exports = async (req, res) => {
     // CORS Headers
@@ -11,12 +12,11 @@ module.exports = async (req, res) => {
     let { url } = req.query;
     if (!url) return res.status(400).json({ error: 'Video link dena zaroori hai!' });
 
-    // Link ko clean karna
     url = decodeURIComponent(url);
 
     try {
         // ==========================================
-        // 1. TIKTOK
+        // 1. TIKTOK (TikWM API)
         // ==========================================
         if (url.includes('tiktok.com') || url.includes('vt.tiktok')) {
             const { data } = await axios.get(`https://www.tikwm.com/api/?url=${url}`);
@@ -31,36 +31,43 @@ module.exports = async (req, res) => {
         }
 
         // ==========================================
-        // 2. YOUTUBE (Fix: Ab koi bhi number/link ho, chalega!)
+        // 2. YOUTUBE (YTDL-CORE DIRECT ENGINE)
         // ==========================================
         else if (url.includes('youtube.com') || url.includes('youtu.be')) {
             
-            // API 1: Ryzendesu Engine
-            try {
-                const r1 = await axios.get(`https://api.ryzendesu.vip/api/downloader/ytmp4?url=${encodeURIComponent(url)}`);
-                if (r1.data?.url) return res.status(200).json({ title: "YouTube HD Video", thumbnail: "https://via.placeholder.com/300x200?text=YouTube", download_url: r1.data.url });
-            } catch(e) {}
+            // Link check karega ke valid YT link hai ya nahi
+            if (!ytdl.validateURL(url)) {
+                throw new Error('Yeh YouTube ka valid link nahi hai.');
+            }
 
-            // API 2: Siputzx Engine
             try {
-                const r2 = await axios.get(`https://api.siputzx.my.id/api/d/ytmp4?url=${encodeURIComponent(url)}`);
-                if (r2.data?.data?.dl) return res.status(200).json({ title: r2.data.data.title || "YouTube HD Video", thumbnail: "https://via.placeholder.com/300x200?text=YouTube", download_url: r2.data.data.dl });
-            } catch(e) {}
+                // Video ki information aur formats nikalega
+                const info = await ytdl.getInfo(url);
+                
+                // Best quality video with audio filter karega
+                let format = ytdl.chooseFormat(info.formats, { quality: 'highest', filter: 'audioandvideo' });
+                
+                // Agar audio+video mix na mile, to sirf video highest quality uthayega
+                if (!format) {
+                    format = ytdl.chooseFormat(info.formats, { quality: 'highest' });
+                }
 
-            // API 3: BK9 Engine
-            try {
-                const r3 = await axios.get(`https://bk9.fun/download/youtube?url=${encodeURIComponent(url)}`);
-                if (r3.data?.BK9?.url) return res.status(200).json({ title: r3.data.BK9.title || "YouTube HD Video", thumbnail: "https://via.placeholder.com/300x200?text=YouTube", download_url: r3.data.BK9.url });
-            } catch(e) {}
+                return res.status(200).json({
+                    title: info.videoDetails.title || "YouTube HD Video",
+                    thumbnail: info.videoDetails.thumbnails[0]?.url || "https://via.placeholder.com/300x200?text=YouTube",
+                    download_url: format.url
+                });
 
-            throw new Error('YouTube APIs ne error diya hai. Link public hona chahiye.');
+            } catch (err) {
+                console.error("YTDL Error:", err);
+                throw new Error('Ytdl-core Error: ' + err.message);
+            }
         }
 
         // ==========================================
         // 3. PINTEREST
         // ==========================================
         else if (url.includes('pinterest.com') || url.includes('pin.it')) {
-            
             try {
                 const r1 = await axios.get(`https://api.ryzendesu.vip/api/downloader/pinterest?url=${encodeURIComponent(url)}`);
                 if (r1.data?.url) return res.status(200).json({ title: "Pinterest HD Video", thumbnail: "https://via.placeholder.com/300x400?text=Pinterest", download_url: r1.data.url });
@@ -73,11 +80,6 @@ module.exports = async (req, res) => {
                 if (typeof dl === 'string' && dl.startsWith('http')) return res.status(200).json({ title: "Pinterest HD Video", thumbnail: "https://via.placeholder.com/300x400?text=Pinterest", download_url: dl });
             } catch(e) {}
 
-            try {
-                const r3 = await axios.get(`https://bk9.fun/download/pinterest?url=${encodeURIComponent(url)}`);
-                if (r3.data?.BK9?.url) return res.status(200).json({ title: "Pinterest HD Video", thumbnail: "https://via.placeholder.com/300x400?text=Pinterest", download_url: r3.data.BK9.url });
-            } catch(e) {}
-
             throw new Error('Pinterest APIs abhi busy hain ya link sirf image ka hai.');
         }
 
@@ -85,7 +87,7 @@ module.exports = async (req, res) => {
         // 4. INVALID LINK
         // ==========================================
         else {
-            return res.status(400).json({ error: "Platform supported nahi hai. Sirf YouTube, TikTok aur Pinterest ka link dalen." });
+            return res.status(400).json({ error: "Platform supported nahi hai. Sirf YT, TikTok aur Pinterest chalega." });
         }
 
     } catch (error) {
