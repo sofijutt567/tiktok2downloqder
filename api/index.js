@@ -1,7 +1,6 @@
 const axios = require('axios');
 
 module.exports = async (req, res) => {
-    // 1. CORS Headers
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -19,7 +18,7 @@ module.exports = async (req, res) => {
             const { data } = await axios.get(`https://www.tikwm.com/api/?url=${url}`);
             if (data?.data?.play) {
                 return res.status(200).json({
-                    title: data.data.title || "TikTok Video Ready",
+                    title: data.data.title || "TikTok HD Video",
                     thumbnail: data.data.cover,
                     download_url: data.data.play
                 });
@@ -28,30 +27,30 @@ module.exports = async (req, res) => {
         }
 
         // ==========================================
-        // 2. YOUTUBE (Universal Fix - Ab Har YT Link Chalega)
+        // 2. YOUTUBE (Ghalti Theek Kar Di - Ab Asal YT Links Chalenge)
         // ==========================================
         else if (url.includes('youtube.com') || url.includes('youtu.be')) {
             
-            // API 1: BK9 Engine (Bohat fast hai)
+            // API 1: Ryzendesu Engine (Best for Vercel)
             try {
-                const res1 = await axios.get(`https://bk9.fun/download/youtube?url=${encodeURIComponent(url)}`);
-                if (res1.data?.BK9?.url) {
+                const res1 = await axios.get(`https://api.ryzendesu.vip/api/downloader/ytmp4?url=${encodeURIComponent(url)}`);
+                if (res1.data?.url) {
                     return res.status(200).json({
-                        title: res1.data.BK9.title || "YouTube HD Video",
+                        title: "YouTube HD Video",
                         thumbnail: "https://via.placeholder.com/300x200?text=YouTube",
-                        download_url: res1.data.BK9.url
+                        download_url: res1.data.url
                     });
                 }
             } catch(e) { console.log("YT API 1 failed"); }
 
-            // API 2: Siputzx (Backup)
+            // API 2: BK9 Engine
             try {
-                const res2 = await axios.get(`https://api.siputzx.my.id/api/d/ytmp4?url=${encodeURIComponent(url)}`);
-                if (res2.data?.data?.dl) {
+                const res2 = await axios.get(`https://bk9.fun/download/youtube?url=${encodeURIComponent(url)}`);
+                if (res2.data?.BK9?.url) {
                     return res.status(200).json({
-                        title: res2.data.data.title || "YouTube HD Video",
+                        title: res2.data.BK9.title || "YouTube HD Video",
                         thumbnail: "https://via.placeholder.com/300x200?text=YouTube",
-                        download_url: res2.data.data.dl
+                        download_url: res2.data.BK9.url
                     });
                 }
             } catch(e) { console.log("YT API 2 failed"); }
@@ -60,33 +59,30 @@ module.exports = async (req, res) => {
         }
 
         // ==========================================
-        // 3. PINTEREST (Short aur Long dono links ke liye)
+        // 3. PINTEREST (Ab pin.it aur pinterest.com dono chalenge)
         // ==========================================
         else if (url.includes('pinterest.com') || url.includes('pin.it')) {
             
-            // API 1: BK9 Engine
+            // API 1: Ryzendesu Engine
             try {
-                const res1 = await axios.get(`https://bk9.fun/download/pinterest?url=${encodeURIComponent(url)}`);
-                if (res1.data?.BK9?.url) {
+                const res1 = await axios.get(`https://api.ryzendesu.vip/api/downloader/pinterest?url=${encodeURIComponent(url)}`);
+                if (res1.data?.url) {
                     return res.status(200).json({
                         title: "Pinterest HD Video",
                         thumbnail: "https://via.placeholder.com/300x400?text=Pinterest",
-                        download_url: res1.data.BK9.url
+                        download_url: res1.data.url
                     });
                 }
             } catch(e) { console.log("Pin API 1 failed"); }
 
-            // API 2: Siputzx
+            // API 2: BK9 Engine
             try {
-                const res2 = await axios.get(`https://api.siputzx.my.id/api/d/pinterest?url=${encodeURIComponent(url)}`);
-                let dl_url = res2.data?.data?.url || res2.data?.data;
-                if (Array.isArray(res2.data?.data)) dl_url = res2.data.data[0];
-                
-                if (typeof dl_url === 'string' && dl_url.startsWith('http')) {
+                const res2 = await axios.get(`https://bk9.fun/download/pinterest?url=${encodeURIComponent(url)}`);
+                if (res2.data?.BK9?.url) {
                     return res.status(200).json({
                         title: "Pinterest HD Video",
                         thumbnail: "https://via.placeholder.com/300x400?text=Pinterest",
-                        download_url: dl_url
+                        download_url: res2.data.BK9.url
                     });
                 }
             } catch(e) { console.log("Pin API 2 failed"); }
@@ -102,7 +98,6 @@ module.exports = async (req, res) => {
         }
 
     } catch (error) {
-        console.error("SYSTEM ERROR:", error.message);
         return res.status(500).json({ error: error.message });
     }
 };
