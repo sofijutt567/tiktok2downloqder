@@ -1,8 +1,9 @@
-const axios = require("axios"); // Capital 'C' theek kar diya
+const axios = require("axios"); 
 const ytdl = require("ytdl-core");
 
 module.exports = async (req, res) => {
 
+  // CORS Headers
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
 
@@ -21,11 +22,11 @@ module.exports = async (req, res) => {
   try {
 
     // ================= YOUTUBE =================
-    // FIX: Ab yeh asli YouTube aur Shorts links ko pehchanega
+    // FIX: Sahi YouTube aur Shorts links ki pehchan
     if (url.includes("youtube.com") || url.includes("youtu.be")) {
 
       if (!ytdl.validateURL(url)) {
-        throw new Error("Invalid YouTube link");
+        return res.status(400).json({ error: "Invalid YouTube link" });
       }
 
       const info = await ytdl.getInfo(url);
@@ -33,9 +34,9 @@ module.exports = async (req, res) => {
 
       return res.json({
         platform: "YouTube",
-        title: info.videoDetails.title,
-        thumbnail: info.videoDetails.thumbnails[0].url,
-        download_url: format.url
+        title: info.videoDetails?.title || "YouTube Video",
+        thumbnail: info.videoDetails?.thumbnails?.[0]?.url || "",
+        download_url: format?.url
       });
     }
 
@@ -43,11 +44,15 @@ module.exports = async (req, res) => {
     if (url.includes("tiktok.com") || url.includes("vt.tiktok")) {
 
       const { data } = await axios.get(`https://www.tikwm.com/api/?url=${url}`);
+      
+      if (!data?.data?.play) {
+        throw new Error("TikTok API se video link nahi mila");
+      }
 
       return res.json({
         platform: "TikTok",
-        title: data.data.title,
-        thumbnail: data.data.cover,
+        title: data.data?.title || "TikTok Video",
+        thumbnail: data.data?.cover || "",
         download_url: data.data.play
       });
     }
@@ -56,6 +61,10 @@ module.exports = async (req, res) => {
     if (url.includes("pinterest.com") || url.includes("pin.it")) {
 
       const { data } = await axios.get(`https://api.siputzx.my.id/api/d/pinterest?url=${url}`);
+      
+      if (!data?.data) {
+        throw new Error("Pinterest API se video nahi mili");
+      }
 
       let video = Array.isArray(data.data) ? data.data[0] : data.data;
 
@@ -70,6 +79,10 @@ module.exports = async (req, res) => {
     if (url.includes("instagram.com")) {
 
       const { data } = await axios.get(`https://api.siputzx.my.id/api/d/igdl?url=${url}`);
+      
+      if (!data?.data?.[0]?.url) {
+        throw new Error("Instagram API se video nahi mili");
+      }
 
       return res.json({
         platform: "Instagram",
@@ -79,14 +92,19 @@ module.exports = async (req, res) => {
     }
 
     // ================= FACEBOOK =================
-    if (url.includes("facebook.com") || url.includes("fb.watch")) {
+    if (url.includes("facebook.com") || url.includes("fb.watch") || url.includes("fb.com")) {
 
       const { data } = await axios.get(`https://api.siputzx.my.id/api/d/fb?url=${url}`);
+      
+      let download_url = data?.data?.hd || data?.data?.sd;
+      if (!download_url) {
+        throw new Error("Facebook API se video nahi mili");
+      }
 
       return res.json({
         platform: "Facebook",
         title: "Facebook Video",
-        download_url: data.data.hd || data.data.sd
+        download_url: download_url
       });
     }
 
@@ -94,23 +112,29 @@ module.exports = async (req, res) => {
     if (url.includes("twitter.com") || url.includes("x.com")) {
 
       const { data } = await axios.get(`https://api.siputzx.my.id/api/d/twitter?url=${url}`);
+      
+      let download_url = data?.data?.HD || data?.data?.SD;
+      if (!download_url) {
+        throw new Error("Twitter API se video nahi mili");
+      }
 
       return res.json({
         platform: "Twitter",
         title: "Twitter Video",
-        download_url: data.data.HD || data.data.SD
+        download_url: download_url
       });
     }
 
-    // Agar koi aisi website ho jo uper list mein na ho
+    // Agar koi aisi website ho jo list mein na ho
     return res.status(400).json({ error: "Platform supported nahi hai" });
 
   } catch (err) {
+    // Vercel dashboard mein check karne ke liye asol error print karega
+    console.error("== API ERROR ==", err.message);
 
     return res.status(500).json({
       error: "Video fetch nahi ho saka",
-      message: err.message
+      details: err.message
     });
-
   }
 };
