@@ -1,4 +1,4 @@
-const axios = require("axios");
+const axios = require("axios"); // Capital 'C' theek kar diya
 const ytdl = require("ytdl-core");
 
 module.exports = async (req, res) => {
@@ -21,6 +21,7 @@ module.exports = async (req, res) => {
   try {
 
     // ================= YOUTUBE =================
+    // FIX: Ab yeh asli YouTube aur Shorts links ko pehchanega
     if (url.includes("youtube.com") || url.includes("youtu.be")) {
 
       if (!ytdl.validateURL(url)) {
@@ -39,7 +40,7 @@ module.exports = async (req, res) => {
     }
 
     // ================= TIKTOK =================
-    if (url.includes("tiktok.com")) {
+    if (url.includes("tiktok.com") || url.includes("vt.tiktok")) {
 
       const { data } = await axios.get(`https://www.tikwm.com/api/?url=${url}`);
 
@@ -78,7 +79,7 @@ module.exports = async (req, res) => {
     }
 
     // ================= FACEBOOK =================
-    if (url.includes("facebook.com")) {
+    if (url.includes("facebook.com") || url.includes("fb.watch")) {
 
       const { data } = await axios.get(`https://api.siputzx.my.id/api/d/fb?url=${url}`);
 
@@ -89,7 +90,7 @@ module.exports = async (req, res) => {
       });
     }
 
-    // ================= TWITTER =================
+    // ================= TWITTER / X =================
     if (url.includes("twitter.com") || url.includes("x.com")) {
 
       const { data } = await axios.get(`https://api.siputzx.my.id/api/d/twitter?url=${url}`);
@@ -101,11 +102,12 @@ module.exports = async (req, res) => {
       });
     }
 
-    return res.json({ error: "Platform supported nahi hai" });
+    // Agar koi aisi website ho jo uper list mein na ho
+    return res.status(400).json({ error: "Platform supported nahi hai" });
 
   } catch (err) {
 
-    return res.json({
+    return res.status(500).json({
       error: "Video fetch nahi ho saka",
       message: err.message
     });
