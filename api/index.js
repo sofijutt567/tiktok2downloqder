@@ -1,7 +1,7 @@
 const axios = require('axios');
 
 module.exports = async (req, res) => {
-    // 1. CORS Headers
+    // CORS Headers
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -31,7 +31,7 @@ module.exports = async (req, res) => {
         }
 
         // ==========================================
-        // 2. YOUTUBE (100% ASLI LINKS KI PEHCHAN!)
+        // 2. YOUTUBE (Fix: Ab koi bhi number/link ho, chalega!)
         // ==========================================
         else if (url.includes('youtube.com') || url.includes('youtu.be')) {
             
@@ -53,7 +53,7 @@ module.exports = async (req, res) => {
                 if (r3.data?.BK9?.url) return res.status(200).json({ title: r3.data.BK9.title || "YouTube HD Video", thumbnail: "https://via.placeholder.com/300x200?text=YouTube", download_url: r3.data.BK9.url });
             } catch(e) {}
 
-            throw new Error('YouTube APIs ne error diya hai. Link public aur valid hona chahiye.');
+            throw new Error('YouTube APIs ne error diya hai. Link public hona chahiye.');
         }
 
         // ==========================================
@@ -85,7 +85,7 @@ module.exports = async (req, res) => {
         // 4. INVALID LINK
         // ==========================================
         else {
-            return res.status(400).json({ error: "Platform supported nahi hai. Sirf YT, TikTok aur Pinterest chalega." });
+            return res.status(400).json({ error: "Platform supported nahi hai. Sirf YouTube, TikTok aur Pinterest ka link dalen." });
         }
 
     } catch (error) {
