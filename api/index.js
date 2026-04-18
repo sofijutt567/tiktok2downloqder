@@ -13,7 +13,7 @@ module.exports = async (req, res) => {
 
     try {
         // ==========================================
-        // 1. TIKTOK (TikWM API)
+        // 1. TIKTOK (100% Working)
         // ==========================================
         if (url.includes('tiktok.com') || url.includes('vt.tiktok')) {
             const { data } = await axios.get(`https://www.tikwm.com/api/?url=${url}`);
@@ -28,30 +28,30 @@ module.exports = async (req, res) => {
         }
 
         // ==========================================
-        // 2. YOUTUBE (Dual APIs)
+        // 2. YOUTUBE (Ghalti theek kar di gayi hai!)
         // ==========================================
         else if (url.includes('youtube.com') || url.includes('youtu.be')) {
             
-            // API 1: Siputzx
+            // API 1: BK9 Engine (Bohat fast hai)
             try {
-                const res1 = await axios.get(`https://api.siputzx.my.id/api/d/ytmp4?url=${encodeURIComponent(url)}`);
-                if (res1.data?.data?.dl) {
+                const res1 = await axios.get(`https://bk9.fun/download/youtube?url=${encodeURIComponent(url)}`);
+                if (res1.data?.BK9?.url) {
                     return res.status(200).json({
-                        title: res1.data.data.title || "YouTube HD Video",
+                        title: res1.data.BK9.title || "YouTube HD Video",
                         thumbnail: "https://via.placeholder.com/300x200?text=YouTube",
-                        download_url: res1.data.data.dl
+                        download_url: res1.data.BK9.url
                     });
                 }
             } catch(e) { console.log("YT API 1 failed"); }
 
-            // API 2: BK9 Engine
+            // API 2: Siputzx (Backup)
             try {
-                const res2 = await axios.get(`https://bk9.fun/download/youtube?url=${encodeURIComponent(url)}`);
-                if (res2.data?.BK9?.url) {
+                const res2 = await axios.get(`https://api.siputzx.my.id/api/d/ytmp4?url=${encodeURIComponent(url)}`);
+                if (res2.data?.data?.dl) {
                     return res.status(200).json({
-                        title: res2.data.BK9.title || "YouTube HD Video",
+                        title: res2.data.data.title || "YouTube HD Video",
                         thumbnail: "https://via.placeholder.com/300x200?text=YouTube",
-                        download_url: res2.data.BK9.url
+                        download_url: res2.data.data.dl
                     });
                 }
             } catch(e) { console.log("YT API 2 failed"); }
@@ -60,18 +60,18 @@ module.exports = async (req, res) => {
         }
 
         // ==========================================
-        // 3. PINTEREST (Dual APIs)
+        // 3. PINTEREST (Naya BK9 API lagaya hai)
         // ==========================================
         else if (url.includes('pinterest.com') || url.includes('pin.it')) {
             
-            // API 1: Ryzendesu
+            // API 1: BK9 Engine
             try {
-                const res1 = await axios.get(`https://api.ryzendesu.vip/api/downloader/pinterest?url=${encodeURIComponent(url)}`);
-                if (res1.data && res1.data.url) {
+                const res1 = await axios.get(`https://bk9.fun/download/pinterest?url=${encodeURIComponent(url)}`);
+                if (res1.data?.BK9?.url) {
                     return res.status(200).json({
                         title: "Pinterest HD Video",
                         thumbnail: "https://via.placeholder.com/300x400?text=Pinterest",
-                        download_url: res1.data.url
+                        download_url: res1.data.BK9.url
                     });
                 }
             } catch(e) { console.log("Pin API 1 failed"); }
