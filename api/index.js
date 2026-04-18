@@ -1,9 +1,9 @@
 const axios = require('axios');
 
 module.exports = async (req, res) => {
-    // 1. CORS Headers (Taake Frontend block na kare)
+    // 1. CORS Headers
     res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
     if (req.method === 'OPTIONS') {
@@ -18,27 +18,22 @@ module.exports = async (req, res) => {
     }
 
     try {
-        // 3. Cobalt API Call
-        const response = await axios.post('https://api.cobalt.tools/api/json', {
-            url: url,
-            isNoTTWatermark: true,
-            vQuality: "720"
-        }, {
-            headers: {
-                'Accept': 'application/json',
-                'Content-Type': 'application/json',
-                'User-Agent': 'Mozilla/5.0'
-            }
-        });
+        // 3. TikWM API Call
+        const response = await axios.get(`https://www.tikwm.com/api/?url=${encodeURIComponent(url)}`);
 
-        // 4. Success Response
-        return res.status(200).json(response.data);
+        // 4. Response check karna
+        if (response.data && response.data.data && response.data.data.play) {
+            return res.status(200).json({
+                title: response.data.data.title || "TikTok Video",
+                download_url: response.data.data.play,
+                thumbnail: response.data.data.cover
+            });
+        } else {
+            throw new Error('Video mil nahi saki, link check karein.');
+        }
 
     } catch (error) {
-        // Error handling
-        const errorMessage = error.response ? error.response.data : error.message;
-        console.error("COBALT ERROR:", errorMessage);
-        return res.status(500).json({ error: 'Cobalt API Error', details: errorMessage });
+        console.error("API ERROR:", error.message);
+        return res.status(500).json({ error: 'API Error', details: error.message });
     }
 };
-
