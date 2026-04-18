@@ -1,25 +1,19 @@
 const axios = require('axios');
 
 module.exports = async (req, res) => {
-    // 1. CORS Headers (Security & Connection)
+    // 1. CORS Headers
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-    if (req.method === 'OPTIONS') {
-        return res.status(200).end();
-    }
+    if (req.method === 'OPTIONS') return res.status(200).end();
 
-    // 2. Link Get Karein
     const { url } = req.query;
-
-    if (!url) {
-        return res.status(400).json({ error: 'Video link dena zaroori hai!' });
-    }
+    if (!url) return res.status(400).json({ error: 'Video link dena zaroori hai!' });
 
     try {
         // ==========================================
-        // ROUTE 1: TIKTOK (TikWM API use karega)
+        // ROUTE 1: TIKTOK (TikWM se)
         // ==========================================
         if (url.includes('tiktok.com')) {
             const response = await axios.get(`https://www.tikwm.com/api/?url=${encodeURIComponent(url)}`);
@@ -29,43 +23,55 @@ module.exports = async (req, res) => {
                     thumbnail: response.data.data.cover,
                     download_url: response.data.data.play
                 });
-            } else {
-                throw new Error('TikTok video private hai ya link ghalat hai.');
             }
         } 
         
         // ==========================================
-        // ROUTE 2: YOUTUBE & PINTEREST (Cobalt v8 API)
+        // ROUTE 2: YOUTUBE & PINTEREST (Auto-Switcher)
         // ==========================================
-        else {
-            // Cobalt v8 ab POST request aur strict headers maangta hai
-            const response = await axios.post('https://api.cobalt.tools/', {
-                url: url
-            }, {
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json',
-                    'Origin': 'https://cobalt.tools',
-                    'Referer': 'https://cobalt.tools/',
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-                }
-            });
+        // Vercel block hone par hum in 4 backup servers ka use karenge
+        const cobaltServers = [
+            'https://cobalt.qiaosi.dev/',
+            'https://api.cobalt.ac/',
+            'https://cobalt.tux.pizza/',
+            'https://api.cobalt.tools/' // Main server aakhri option
+        ];
 
-            if (response.data && response.data.url) {
-                return res.status(200).json({
-                    title: "HD Video Ready",
-                    thumbnail: "https://via.placeholder.com/300x200?text=Video+Ready", // Cobalt kabhi thumb nahi deta
-                    download_url: response.data.url
+        let finalDownloadData = null;
+
+        // Loop chalayen: Ek fail hoga to agla try karega
+        for (let server_url of cobaltServers) {
+            try {
+                const response = await axios.post(server_url, { url: url }, {
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    },
+                    timeout: 7000 // Har server ko 7 second dega
                 });
-            } else {
-                throw new Error('Video server se fetch nahi ho saki.');
+                
+                if (response.data && response.data.url) {
+                    finalDownloadData = {
+                        title: "YouTube/Pinterest HD Video",
+                        thumbnail: "https://via.placeholder.com/300x200?text=Video+Ready",
+                        download_url: response.data.url
+                    };
+                    break; // Jaise hi link mil jaye, loop band kar do!
+                }
+            } catch (err) {
+                console.log(`Server failed: ${server_url}`);
+                continue; // Agar yeh block hai, to chhod kar agle par jao
             }
         }
 
+        // Agar kisi ek server se bhi link mil gaya
+        if (finalDownloadData) {
+            return res.status(200).json(finalDownloadData);
+        } else {
+            return res.status(500).json({ error: 'Sabhi servers temporarily busy hain. Kuch dair baad try karein.' });
+        }
+
     } catch (error) {
-        // Error details pakarne ke liye
-        const errorMessage = error.response && error.response.data ? JSON.stringify(error.response.data) : error.message;
-        console.error("API ERROR:", errorMessage);
-        return res.status(500).json({ error: 'Download failed', details: errorMessage });
+        return res.status(500).json({ error: 'System Error', details: error.message });
     }
 };
