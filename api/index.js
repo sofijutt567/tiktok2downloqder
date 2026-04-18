@@ -16,7 +16,7 @@ module.exports = async (req, res) => {
 
     try {
         // ==========================================
-        // 1. TIKTOK (TikWM - 100% Working)
+        // 1. TIKTOK
         // ==========================================
         if (url.includes('tiktok.com') || url.includes('vt.tiktok')) {
             const { data } = await axios.get(`https://www.tikwm.com/api/?url=${url}`);
@@ -31,7 +31,7 @@ module.exports = async (req, res) => {
         }
 
         // ==========================================
-        // 2. YOUTUBE (Asli URLs: youtube.com, youtu.be, shorts)
+        // 2. YOUTUBE (100% ASLI LINKS KI PEHCHAN!)
         // ==========================================
         else if (url.includes('youtube.com') || url.includes('youtu.be')) {
             
@@ -53,21 +53,19 @@ module.exports = async (req, res) => {
                 if (r3.data?.BK9?.url) return res.status(200).json({ title: r3.data.BK9.title || "YouTube HD Video", thumbnail: "https://via.placeholder.com/300x200?text=YouTube", download_url: r3.data.BK9.url });
             } catch(e) {}
 
-            throw new Error('YouTube APIs abhi Vercel IP ko block kar rahi hain. Kuch dair baad try karein.');
+            throw new Error('YouTube APIs ne error diya hai. Link public aur valid hona chahiye.');
         }
 
         // ==========================================
-        // 3. PINTEREST (pinterest.com & pin.it)
+        // 3. PINTEREST
         // ==========================================
         else if (url.includes('pinterest.com') || url.includes('pin.it')) {
             
-            // API 1: Ryzendesu Engine
             try {
                 const r1 = await axios.get(`https://api.ryzendesu.vip/api/downloader/pinterest?url=${encodeURIComponent(url)}`);
                 if (r1.data?.url) return res.status(200).json({ title: "Pinterest HD Video", thumbnail: "https://via.placeholder.com/300x400?text=Pinterest", download_url: r1.data.url });
             } catch(e) {}
 
-            // API 2: Siputzx Engine
             try {
                 const r2 = await axios.get(`https://api.siputzx.my.id/api/d/pinterest?url=${encodeURIComponent(url)}`);
                 let dl = r2.data?.data?.url || r2.data?.data;
@@ -75,7 +73,6 @@ module.exports = async (req, res) => {
                 if (typeof dl === 'string' && dl.startsWith('http')) return res.status(200).json({ title: "Pinterest HD Video", thumbnail: "https://via.placeholder.com/300x400?text=Pinterest", download_url: dl });
             } catch(e) {}
 
-            // API 3: BK9 Engine
             try {
                 const r3 = await axios.get(`https://bk9.fun/download/pinterest?url=${encodeURIComponent(url)}`);
                 if (r3.data?.BK9?.url) return res.status(200).json({ title: "Pinterest HD Video", thumbnail: "https://via.placeholder.com/300x400?text=Pinterest", download_url: r3.data.BK9.url });
