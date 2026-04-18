@@ -1,14 +1,18 @@
 const axios = require('axios');
 
 module.exports = async (req, res) => {
+    // 1. CORS Headers
     res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
     if (req.method === 'OPTIONS') return res.status(200).end();
 
-    const { url } = req.query;
+    let { url } = req.query;
     if (!url) return res.status(400).json({ error: 'Video link dena zaroori hai!' });
+
+    // Link ko clean karna taake koi hidden characters na hon
+    url = decodeURIComponent(url);
 
     try {
         // ==========================================
@@ -27,65 +31,104 @@ module.exports = async (req, res) => {
         }
 
         // ==========================================
-        // 2. YOUTUBE (Ghalti Theek Kar Di - Ab Asal YT Links Chalenge)
+        // 2. YOUTUBE (Fixed URL Logic + Cobalt Server Farm)
         // ==========================================
         else if (url.includes('youtube.com') || url.includes('youtu.be')) {
             
-            // API 1: Ryzendesu Engine (Best for Vercel)
+            // 4 Alag servers try karega, Vercel block hua to agle par jayega
+            const cobaltServers = [
+                'https://cobalt.tux.pizza/',
+                'https://api.cobalt.tools/',
+                'https://cobalt.cachyos.org/',
+                'https://co.wuk.sh/'
+            ];
+
+            for (let server of cobaltServers) {
+                try {
+                    const response = await axios.post(server, { url: url }, {
+                        headers: {
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json',
+                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
+                        },
+                        timeout: 6000 // Har server ko 6 seconds dega
+                    });
+
+                    if (response.data && response.data.url) {
+                        return res.status(200).json({
+                            title: "YouTube HD Video",
+                            thumbnail: "https://via.placeholder.com/300x200?text=YouTube",
+                            download_url: response.data.url
+                        });
+                    }
+                } catch (e) {
+                    console.log(`YT Server Fail: ${server}`);
+                    continue; // Agar fail hua to agle server par jao
+                }
+            }
+
+            // Backup API
             try {
-                const res1 = await axios.get(`https://api.ryzendesu.vip/api/downloader/ytmp4?url=${encodeURIComponent(url)}`);
-                if (res1.data?.url) {
+                const res2 = await axios.get(`https://api.siputzx.my.id/api/d/ytmp4?url=${encodeURIComponent(url)}`);
+                if (res2.data?.data?.dl) {
                     return res.status(200).json({
                         title: "YouTube HD Video",
                         thumbnail: "https://via.placeholder.com/300x200?text=YouTube",
-                        download_url: res1.data.url
+                        download_url: res2.data.data.dl
                     });
                 }
-            } catch(e) { console.log("YT API 1 failed"); }
-
-            // API 2: BK9 Engine
-            try {
-                const res2 = await axios.get(`https://bk9.fun/download/youtube?url=${encodeURIComponent(url)}`);
-                if (res2.data?.BK9?.url) {
-                    return res.status(200).json({
-                        title: res2.data.BK9.title || "YouTube HD Video",
-                        thumbnail: "https://via.placeholder.com/300x200?text=YouTube",
-                        download_url: res2.data.BK9.url
-                    });
-                }
-            } catch(e) { console.log("YT API 2 failed"); }
+            } catch(e) {}
 
             throw new Error('Dono YouTube servers busy hain. Kuch dair baad try karein.');
         }
 
         // ==========================================
-        // 3. PINTEREST (Ab pin.it aur pinterest.com dono chalenge)
+        // 3. PINTEREST (Cobalt Auto-Router + Backup)
         // ==========================================
         else if (url.includes('pinterest.com') || url.includes('pin.it')) {
             
-            // API 1: Ryzendesu Engine
-            try {
-                const res1 = await axios.get(`https://api.ryzendesu.vip/api/downloader/pinterest?url=${encodeURIComponent(url)}`);
-                if (res1.data?.url) {
-                    return res.status(200).json({
-                        title: "Pinterest HD Video",
-                        thumbnail: "https://via.placeholder.com/300x400?text=Pinterest",
-                        download_url: res1.data.url
-                    });
-                }
-            } catch(e) { console.log("Pin API 1 failed"); }
+            const cobaltServers = [
+                'https://cobalt.tux.pizza/',
+                'https://api.cobalt.tools/',
+                'https://cobalt.cachyos.org/'
+            ];
 
-            // API 2: BK9 Engine
+            for (let server of cobaltServers) {
+                try {
+                    const response = await axios.post(server, { url: url }, {
+                        headers: {
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json',
+                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
+                        },
+                        timeout: 6000
+                    });
+
+                    if (response.data && response.data.url) {
+                        return res.status(200).json({
+                            title: "Pinterest HD Video",
+                            thumbnail: "https://via.placeholder.com/300x400?text=Pinterest",
+                            download_url: response.data.url
+                        });
+                    }
+                } catch (e) {
+                    continue; 
+                }
+            }
+
+            // Backup API
             try {
-                const res2 = await axios.get(`https://bk9.fun/download/pinterest?url=${encodeURIComponent(url)}`);
-                if (res2.data?.BK9?.url) {
+                const res1 = await axios.get(`https://api.siputzx.my.id/api/d/pinterest?url=${encodeURIComponent(url)}`);
+                let dl_url = res1.data?.data?.url || res1.data?.data;
+                if (Array.isArray(res1.data?.data)) dl_url = res1.data.data[0];
+                if (typeof dl_url === 'string' && dl_url.startsWith('http')) {
                     return res.status(200).json({
                         title: "Pinterest HD Video",
                         thumbnail: "https://via.placeholder.com/300x400?text=Pinterest",
-                        download_url: res2.data.BK9.url
+                        download_url: dl_url
                     });
                 }
-            } catch(e) { console.log("Pin API 2 failed"); }
+            } catch(e) {}
 
             throw new Error('Pinterest API se video fetch nahi ho saki. Shayad link image ka hai.');
         }
@@ -98,6 +141,7 @@ module.exports = async (req, res) => {
         }
 
     } catch (error) {
+        console.error("SYSTEM ERROR:", error.message);
         return res.status(500).json({ error: error.message });
     }
 };
