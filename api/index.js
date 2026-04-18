@@ -13,7 +13,7 @@ module.exports = async (req, res) => {
 
     try {
         // ==========================================
-        // 1. TIKTOK (TikWM API - 100% Working)
+        // 1. TIKTOK (TikWM API)
         // ==========================================
         if (url.includes('tiktok.com') || url.includes('vt.tiktok')) {
             const { data } = await axios.get(`https://www.tikwm.com/api/?url=${url}`);
@@ -28,61 +28,78 @@ module.exports = async (req, res) => {
         }
 
         // ==========================================
-        // 2. PINTEREST (Direct Scraper - Kabhi block nahi hoga)
+        // 2. YOUTUBE (Dual APIs)
         // ==========================================
-        if (url.includes('pinterest.com') || url.includes('pin.it')) {
-            // Pinterest ka page download karega
-            const { data } = await axios.get(url, { 
-                headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' } 
-            });
+        else if (url.includes('youtube.com') || url.includes('youtu.be')) {
             
-            // HTML code mein se direct .mp4 video ka link dhoondega
-            const videoMatch = data.match(/"contentUrl":"([^"]+\.mp4)"/) || data.match(/<meta property="og:video" content="([^"]+)"/);
-            
-            if (videoMatch && videoMatch[1]) {
-                return res.status(200).json({
-                    title: "Pinterest HD Video",
-                    thumbnail: "https://via.placeholder.com/300x400?text=Pinterest+Video",
-                    download_url: videoMatch[1].replace(/\\/g, '') // Link saaf karna
-                });
-            }
-            throw new Error('Pinterest par video nahi mili. Shayad yeh sirf ek tasveer (image) hai.');
-        }
-
-        // ==========================================
-        // 3. YOUTUBE (Dual Dedicated APIs)
-        // ==========================================
-        if (url.includes('youtube.com') || url.includes('youtu.be')) {
-            
-            // API 1: Siputzx Engine
+            // API 1: Siputzx
             try {
                 const res1 = await axios.get(`https://api.siputzx.my.id/api/d/ytmp4?url=${encodeURIComponent(url)}`);
                 if (res1.data?.data?.dl) {
                     return res.status(200).json({
-                        title: res1.data.data.title || "YouTube HD",
+                        title: res1.data.data.title || "YouTube HD Video",
                         thumbnail: "https://via.placeholder.com/300x200?text=YouTube",
                         download_url: res1.data.data.dl
                     });
                 }
-            } catch(e) { console.log("YT API 1 busy"); }
+            } catch(e) { console.log("YT API 1 failed"); }
 
-            // API 2: BK9 Engine (Agar pehla busy ho)
+            // API 2: BK9 Engine
             try {
                 const res2 = await axios.get(`https://bk9.fun/download/youtube?url=${encodeURIComponent(url)}`);
                 if (res2.data?.BK9?.url) {
                     return res.status(200).json({
-                        title: res2.data.BK9.title || "YouTube HD",
+                        title: res2.data.BK9.title || "YouTube HD Video",
                         thumbnail: "https://via.placeholder.com/300x200?text=YouTube",
                         download_url: res2.data.BK9.url
                     });
                 }
-            } catch(e) { console.log("YT API 2 busy"); }
+            } catch(e) { console.log("YT API 2 failed"); }
 
-            throw new Error('Dono YouTube servers busy hain. Link check karein ya kuch dair baad try karein.');
+            throw new Error('Dono YouTube servers busy hain. Kuch dair baad try karein.');
         }
 
-        // Agar koi aur link daal diya jaye
-        return res.status(400).json({ error: "Yeh platform supported nahi hai. Sirf YT, TikTok aur Pinterest chalega." });
+        // ==========================================
+        // 3. PINTEREST (Dual APIs)
+        // ==========================================
+        else if (url.includes('pinterest.com') || url.includes('pin.it')) {
+            
+            // API 1: Ryzendesu
+            try {
+                const res1 = await axios.get(`https://api.ryzendesu.vip/api/downloader/pinterest?url=${encodeURIComponent(url)}`);
+                if (res1.data && res1.data.url) {
+                    return res.status(200).json({
+                        title: "Pinterest HD Video",
+                        thumbnail: "https://via.placeholder.com/300x400?text=Pinterest",
+                        download_url: res1.data.url
+                    });
+                }
+            } catch(e) { console.log("Pin API 1 failed"); }
+
+            // API 2: Siputzx
+            try {
+                const res2 = await axios.get(`https://api.siputzx.my.id/api/d/pinterest?url=${encodeURIComponent(url)}`);
+                let dl_url = res2.data?.data?.url || res2.data?.data;
+                if (Array.isArray(res2.data?.data)) dl_url = res2.data.data[0];
+                
+                if (typeof dl_url === 'string' && dl_url.startsWith('http')) {
+                    return res.status(200).json({
+                        title: "Pinterest HD Video",
+                        thumbnail: "https://via.placeholder.com/300x400?text=Pinterest",
+                        download_url: dl_url
+                    });
+                }
+            } catch(e) { console.log("Pin API 2 failed"); }
+
+            throw new Error('Pinterest API se video fetch nahi ho saki. Shayad link image ka hai.');
+        }
+
+        // ==========================================
+        // 4. INVALID LINK
+        // ==========================================
+        else {
+            return res.status(400).json({ error: "Platform supported nahi hai. Sirf YT, TikTok aur Pinterest chalega." });
+        }
 
     } catch (error) {
         console.error("SYSTEM ERROR:", error.message);
